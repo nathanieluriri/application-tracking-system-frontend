@@ -1,16 +1,47 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState, useCallback } from "react";
+import { DashboardSidebar } from "@/components/DashboardSidebar";
+import { OverviewView } from "@/components/OverviewView";
+import { ApplicantsView } from "@/components/ApplicantsView";
+import { PipelineView } from "@/components/PipelineView";
+import { EmailComposer } from "@/components/EmailComposer";
+import { EmailsView } from "@/components/EmailsView";
+import { TemplatesView } from "@/components/TemplatesView";
+import { PositionsView } from "@/components/PositionsView";
+import { SettingsView } from "@/components/SettingsView";
+import type { Applicant } from "@/lib/mock-data";
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+const Index = () => {
+  const [activeView, setActiveView] = useState("overview");
+  const [emailRecipients, setEmailRecipients] = useState<Applicant[] | null>(null);
+
+  const handleComposeEmail = useCallback((applicants: Applicant[]) => {
+    setEmailRecipients(applicants);
+  }, []);
+
+  const renderView = () => {
+    switch (activeView) {
+      case "overview": return <OverviewView />;
+      case "applicants": return <ApplicantsView onComposeEmail={handleComposeEmail} />;
+      case "pipeline": return <PipelineView />;
+      case "emails": return <EmailsView />;
+      case "templates": return <TemplatesView />;
+      case "positions": return <PositionsView />;
+      case "settings": return <SettingsView />;
+      default: return <OverviewView />;
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
+    <div className="min-h-screen bg-muted/30">
+      <DashboardSidebar activeView={activeView} onNavigate={setActiveView} />
+      <main className="ml-64 p-8">
+        {renderView()}
+      </main>
+      {emailRecipients && (
+        <EmailComposer recipients={emailRecipients} onClose={() => setEmailRecipients(null)} />
+      )}
     </div>
   );
 };
-
-const Index = PlaceholderIndex;
 
 export default Index;
