@@ -81,6 +81,9 @@ export interface Settings {
   // database
   mongoUri: string;
   dbName: string;
+
+  // agent
+  geminiApiKey: string | null;
 }
 
 export type EnvMap = Record<string, string | undefined>;
@@ -130,6 +133,8 @@ export function loadSettings(env: EnvMap = process.env): Readonly<Settings> {
 
     mongoUri: env.MONGODB_URI || env.MONGO_URL || "mongodb://localhost:27017",
     dbName: env.DB_NAME || "ats",
+
+    geminiApiKey: env.GEMINI_API_KEY || null,
   };
 
   return Object.freeze(settings);

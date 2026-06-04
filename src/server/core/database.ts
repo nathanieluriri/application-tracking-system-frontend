@@ -66,6 +66,7 @@ export const COLLECTIONS = {
   secretKeys: "secret_keys",
   senderDomains: "sender_domains",
   widgets: "widgets",
+  conversations: "conversations",
 } as const;
 
 export type CollectionName = (typeof COLLECTIONS)[keyof typeof COLLECTIONS];
