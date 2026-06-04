@@ -6,6 +6,17 @@ interface ServerFetchOptions extends Omit<RequestInit, "headers"> {
 }
 
 /**
+ * This app's own origin, from trusted deploy-time config only (never request
+ * headers). APP_ORIGIN wins; then Vercel's deployment URL; else local dev port.
+ */
+function appOrigin(): string {
+  if (process.env.APP_ORIGIN) return process.env.APP_ORIGIN.replace(/\/$/, "");
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return `http://127.0.0.1:${process.env.PORT ?? "3000"}`;
+}
+
+/**
  * RSC fetcher. Calls this app's own in-process `/api/*` route handlers
  * (same origin) and forwards the caller's auth cookies. Legacy `/v1/*` paths
  * are transparently mapped to `/api/*` so existing RSC pages keep working after
@@ -36,11 +47,12 @@ export async function serverFetch<T = unknown>(
   let apiPath = path;
   if (path.startsWith("/v1/")) apiPath = `/api/${path.slice(4)}`;
 
+  // Resolve the self-origin from TRUSTED config only — never from request
+  // headers (Host / X-Forwarded-Host), since we forward auth cookies and a
+  // header-derived host would be a credential-forwarding SSRF vector.
   let url = apiPath;
   if (!apiPath.startsWith("http")) {
-    const host = reqHeaders.get("x-forwarded-host") ?? reqHeaders.get("host") ?? "localhost:3000";
-    const proto = reqHeaders.get("x-forwarded-proto") ?? "http";
-    url = `${proto}://${host}${apiPath}`;
+    url = `${appOrigin()}${apiPath}`;
   }
 
   const res = await fetch(url, { ...init, headers: finalHeaders, cache: "no-store" });

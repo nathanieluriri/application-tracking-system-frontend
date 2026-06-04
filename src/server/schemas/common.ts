@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { ObjectId } from "mongodb";
+// Import ObjectId from `bson` (browser-safe) rather than `mongodb`: this module
+// also exports enums/zod schemas used by client code, and importing `mongodb`
+// here would drag its Node-only deps ('net'/'crypto'/…) into the client bundle.
+// mongodb's ObjectId IS bson's ObjectId, so the driver accepts these instances.
+import { ObjectId } from "bson";
 
 /**
  * Shared enums + value objects, mirrors `schemas/imports.py`.
