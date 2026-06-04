@@ -1,30 +1,40 @@
+"use client";
+
 import { cn } from "@/lib/utils";
 import { Spinner } from "./Spinner";
+import { useDelayedFlag } from "@/hooks/useDelayedFlag";
 
 interface LoadingOverlayProps extends React.HTMLAttributes<HTMLDivElement> {
   visible: boolean;
   message?: string;
+  /** Delay before showing while visible (anti-flash). Default 200ms. */
+  delay?: number;
+  /** Minimum time shown once visible (anti-flicker). Default 400ms. */
+  minDuration?: number;
 }
 
 export function LoadingOverlay({
   visible,
   message,
+  delay,
+  minDuration,
   className,
   ...props
 }: LoadingOverlayProps) {
-  if (!visible) return null;
+  const show = useDelayedFlag(visible, { delay, minDuration });
+  if (!show) return null;
   return (
     <div
       aria-busy="true"
-      aria-live="polite"
       className={cn(
         "absolute inset-0 z-10 grid place-items-center rounded-lg bg-background/60 backdrop-blur-sm",
         className,
       )}
       {...props}
     >
-      <div className="flex flex-col items-center gap-2">
-        <Spinner size="md" />
+      {/* Single live region — the inner Spinner is decorative so it isn't announced twice. */}
+      <div className="flex flex-col items-center gap-2" role="status" aria-live="polite">
+        <Spinner size="md" decorative />
         {message ? (
           <span className="text-sm text-muted-foreground">{message}</span>
         ) : null}
