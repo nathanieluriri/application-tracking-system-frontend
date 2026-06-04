@@ -10,7 +10,10 @@ const PUBLIC_PATHS = [
 ];
 
 const PUBLIC_PREFIXES = [
-  "/api/auth",
+  // All API routes bypass the page auth-gate: the route handlers enforce auth
+  // themselves and return a 401 JSON envelope (never a 302 HTML redirect),
+  // which the client honours (incl. public endpoints + silent refresh).
+  "/api",
   "/_next",
   "/favicon.ico",
   "/static",
