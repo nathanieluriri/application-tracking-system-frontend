@@ -122,6 +122,49 @@ export async function countNewThisWeek(): Promise<number> {
   return db.collection(COLLECTIONS.applications).countDocuments({ date_created: { $gte: weekAgo } });
 }
 
+export async function countByWeek(
+  weeks = 5,
+): Promise<{ week_start: number; week_end: number; applications: number; hires: number }[]> {
+  const db = await getDb();
+  const now = nowSeconds();
+  const weekSeconds = 7 * 24 * 3600;
+  const buckets: { week_start: number; week_end: number; applications: number; hires: number }[] = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const start = now - (i + 1) * weekSeconds;
+    const end = now - i * weekSeconds;
+    const applications = await db
+      .collection(COLLECTIONS.applications)
+      .countDocuments({ date_created: { $gte: start, $lt: end } });
+    const hires = await db
+      .collection(COLLECTIONS.applications)
+      .countDocuments({ status: "accepted", last_updated: { $gte: start, $lt: end } });
+    buckets.push({ week_start: start, week_end: end, applications, hires });
+  }
+  return buckets;
+}
+
+export async function avgTimeToHireSeconds(): Promise<number> {
+  const db = await getDb();
+  const durations: number[] = [];
+  const cursor = db.collection(COLLECTIONS.applicationStatusHistory).aggregate([
+    { $match: { to_status: "accepted" } },
+    { $group: { _id: "$application_id", accepted_at: { $max: "$changed_at" } } },
+  ]);
+  for await (const row of cursor) {
+    const acceptedAt = row.accepted_at;
+    const applicationId = row._id;
+    if (acceptedAt == null || !applicationId) continue;
+    const oid = toObjectId(String(applicationId));
+    if (!oid) continue;
+    const application = await db.collection(COLLECTIONS.applications).findOne({ _id: oid });
+    if (!application) continue;
+    const applied = application.applied_date ?? application.date_created;
+    if (applied) durations.push(Number(acceptedAt) - Number(applied));
+  }
+  if (durations.length === 0) return 0;
+  return durations.reduce((a, b) => a + b, 0) / durations.length;
+}
+
 export async function getStatusHistory(applicationId: string): Promise<Record<string, unknown>[]> {
   const db = await getDb();
   const cursor = db
