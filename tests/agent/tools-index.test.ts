@@ -7,5 +7,6 @@ describe("buildRegistry", () => {
     expect(r.get("positions.create")).toBeDefined();
     expect(r.get("positions.close")?.risk).toBe("destructive");
     expect(r.toGeminiDeclarations().some((d) => d.name === "positions.create")).toBe(true);
+    expect(r.get("applicants.move")?.risk).toBe("write");
   });
 });
