@@ -21,6 +21,7 @@ import {
   EMPLOYMENT_TYPES,
 } from "@/lib/widget/config";
 import { WidgetPreview } from "./WidgetPreview";
+import { WidgetBuilderSkeleton } from "./WidgetBuilderSkeleton";
 import { EmbedSnippet } from "./EmbedSnippet";
 
 const LAYOUTS: { value: WidgetLayout; label: string }[] = [
@@ -91,11 +92,7 @@ export function WidgetBuilder({ widgetId }: { widgetId: string }) {
   });
 
   if (isLoading || !draft) {
-    return (
-      <div className="flex h-[60vh] items-center justify-center text-muted-foreground">
-        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading widget…
-      </div>
-    );
+    return <WidgetBuilderSkeleton />;
   }
   if (isError) {
     return (

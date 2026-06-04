@@ -33,13 +33,20 @@ Every interaction that waits on a network response must give visible feedback. P
 
 | Situation | Required feedback |
 |---|---|
-| Cold-loading a page | A `loading.tsx` skeleton matching the page shape (table → table skeleton, KPI grid → card skeletons). **Never a bare spinner for a full page.** |
-| Warm route navigation | Top progress bar via the `useNavigationLoading` hook (already wired in the dashboard layout). |
-| Form submit / button awaiting response | Button enters loading state: disabled + inline spinner + label changes to "Saving…" / "Sending…". Use `<ButtonLoading>` or the pattern in `components/feedback/`. |
-| Mutation that updates a card/section | `<LoadingOverlay>` over the affected card (`absolute`, blurred bg, centered spinner, `aria-busy`). |
+| Cold-loading a page | A `loading.tsx` skeleton matching the page shape (table → `TableSkeleton`, KPI grid → `KpiGridSkeleton`, form → `FormSkeleton`, detail → `DetailSkeleton`). **Never a bare spinner for a full page** — the root `app/loading.tsx` uses `<BrandedSplash>`. |
+| Warm route navigation | The top progress bar from `NavigationProgressProvider` (wrapped around the dashboard layout). Sidebar links use `<NavLink>` (native `onNavigate`); for post-mutation `router.push`, use `useNavigate()` so the bar shows too. |
+| Form submit / button awaiting response | `<ButtonLoading>` — disabled + inline spinner + label change ("Saving…" / "Sending…"). |
+| Mutation that updates a card/section | `<LoadingOverlay visible>` over the affected card. It self-delays (~200ms, anti-flash) and self-holds (~400ms, anti-flicker) via `useDelayedFlag`, and owns a single live region. |
+| Finite work with known progress | `<Progress>` (determinate). For uploads use `useUploadWithProgress` (XHR — `fetch` can't report upload %) + `<UploadProgress>`; omit `value` for an indeterminate bar when total size is unknown. |
+| Client query (list/detail) | Fetching with no data → skeleton; on background refetch keep showing existing data (gate overlays on `isFetching && !isLoading`, or use `placeholderData`). Mutations: optimistic update + rollback on error + sonner toast. |
 | Toggle / star / archive (optimistic-friendly) | Apply UI change immediately; roll back on error; sonner toast on success/failure. |
 
-**Skeletons live in `components/feedback/skeletons/`.** When you create a new list / detail / form component, create a sibling skeleton with matching dimensions.
+**Accessibility & timing (everywhere):**
+- Respect `prefers-reduced-motion`: skeletons stop pulsing (the `Skeleton` primitive carries `motion-reduce:animate-none` — reuse it instead of raw `animate-pulse`), the nav bar stops easing. The spinner keeps spinning — it is essential feedback.
+- One live region per loader. `Spinner` owns a `role="status"` region by default; inside a component that already provides one, use `<Spinner decorative />`.
+- Don't flash loaders for sub-perceptible waits, and don't flicker them off instantly — use `useDelayedFlag` for spinner/overlay feedback.
+
+**Skeletons live in `components/feedback/skeletons/`** (or as a sibling to a feature component, e.g. `WidgetBuilderSkeleton`). When you create a new list / detail / form component, create a matching skeleton.
 
 ## 4. Component library rules
 
