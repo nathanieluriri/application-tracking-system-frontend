@@ -27,6 +27,7 @@ export interface OrchestratorDeps {
   checkPermission: PermissionCheck;
   secret: string;
   geminiCall?: GeminiCall;
+  loadContext?: () => Promise<RouterDataContext>;
 }
 
 function step(label: string, status: Step["status"]): Step {
@@ -124,7 +125,11 @@ export async function runTurn(
     }
     const tool = deps.registry.get(v.payload.tool);
     if (!tool) return emptyTurn(input.conversationId, "That action is no longer available.");
-    await deps.checkPermission(ctx.req, tool.permission);
+    try {
+      await deps.checkPermission(ctx.req, tool.permission);
+    } catch {
+      return emptyTurn(input.conversationId, "You don't have permission to do that.");
+    }
     const parsed = tool.schema.safeParse(v.payload.args);
     if (!parsed.success) return emptyTurn(input.conversationId, "That request was malformed.");
     const exec = await tool.execute(parsed.data, ctx);
@@ -147,7 +152,7 @@ export async function runTurn(
   const message = (input.message ?? "").trim();
   if (!message) return emptyTurn(input.conversationId, "What would you like me to do?");
 
-  const dataCtx = await loadDataContext();
+  const dataCtx = await (deps.loadContext ?? loadDataContext)();
   const routed = matchIntent(message, dataCtx);
 
   let replyText = "";

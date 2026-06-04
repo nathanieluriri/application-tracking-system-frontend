@@ -83,6 +83,38 @@ describe("runTurn (router-only)", () => {
     expect(out.toolResults.every((r) => r.status !== "ok")).toBe(true);
   });
 
+  it("blocks a confirmed execution when permission is revoked between turns", async () => {
+    const { addPosition, retrievePositionById } = await import("@server/services/positions");
+    const role = await addPosition({ title: "RevokeMe", status: "open" }, newId());
+    const userId = newId();
+
+    let allow = true;
+    const d = {
+      registry: buildRegistry(),
+      checkPermission: vi.fn(async () => {
+        if (!allow) throw Object.assign(new Error("denied"), { status: 403 });
+      }),
+      secret: "s",
+      geminiCall: undefined,
+    };
+
+    const first = await runTurn(
+      { message: "close the RevokeMe position", mode: "auto_run" },
+      { userId, req },
+      d,
+    );
+    expect(first.pending).toBeDefined();
+
+    allow = false; // permission revoked before confirming
+    const second = await runTurn(
+      { conversationId: first.conversationId, confirmToken: first.pending!.token, mode: "auto_run" },
+      { userId, req },
+      d,
+    );
+    expect(second.text).toMatch(/permission/i);
+    expect((await retrievePositionById(role.id!)).status).toBe("open");
+  });
+
   it("confirm round-trip executes the action and persists it", async () => {
     const { addPosition, retrievePositionById } = await import("@server/services/positions");
     const role = await addPosition({ title: "Closable2", status: "open" }, newId());
