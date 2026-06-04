@@ -116,3 +116,13 @@
     background: transparent;
   }
 }
+
+/* Indeterminate <Progress> indicator — slides a partial bar across the track. */
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}

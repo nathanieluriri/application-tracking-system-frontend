@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type UploadStatus =
   | "idle"
@@ -49,6 +49,10 @@ export function useUploadWithProgress<T = unknown>({
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
+
+  // Abort an in-flight upload if the consumer unmounts (e.g. user navigates
+  // away mid-submit) so it can't complete in the background.
+  useEffect(() => () => xhrRef.current?.abort(), []);
 
   const reset = useCallback(() => {
     setProgress(0);

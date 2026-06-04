@@ -37,7 +37,9 @@ export function LoadingOverlay({
         <Spinner size="md" decorative />
         {message ? (
           <span className="text-sm text-muted-foreground">{message}</span>
-        ) : null}
+        ) : (
+          <span className="sr-only">Loading…</span>
+        )}
       </div>
     </div>
   );
