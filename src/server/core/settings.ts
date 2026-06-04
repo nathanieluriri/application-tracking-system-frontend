@@ -83,7 +83,9 @@ export interface Settings {
   dbName: string;
 }
 
-export function loadSettings(env: NodeJS.ProcessEnv = process.env): Readonly<Settings> {
+export type EnvMap = Record<string, string | undefined>;
+
+export function loadSettings(env: EnvMap = process.env): Readonly<Settings> {
   const envName = env.ENV || "development";
 
   const settings: Settings = {

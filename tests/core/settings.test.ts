@@ -11,7 +11,7 @@ describe("settings", () => {
       DEBUG_INCLUDE_ERROR_DETAILS: "false",
       ACCESS_TOKEN_MAX_AGE_SECONDS: "111",
       ROLE_RATE_LIMITS: "anonymous:5/minute",
-    } as NodeJS.ProcessEnv);
+    });
 
     expect(s.isProduction).toBe(true);
     expect(s.secretKey).toBe("sk");
@@ -23,7 +23,7 @@ describe("settings", () => {
   });
 
   it("applies dev defaults when env is empty", () => {
-    const s = loadSettings({} as NodeJS.ProcessEnv);
+    const s = loadSettings({});
     expect(s.env).toBe("development");
     expect(s.isProduction).toBe(false);
     expect(s.corsOrigins).toEqual([]);
