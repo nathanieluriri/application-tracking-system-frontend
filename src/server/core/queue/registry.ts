@@ -14,6 +14,15 @@ export function registerTask(taskKey: string, func: TaskFunc): void {
   registry.set(taskKey, func);
 }
 
+/** Register a task only if its key is free (idempotent app-task wiring). */
+export function registerTaskIfAbsent(taskKey: string, func: TaskFunc): void {
+  if (!registry.has(taskKey)) registry.set(taskKey, func);
+}
+
+export function hasTask(taskKey: string): boolean {
+  return registry.has(taskKey);
+}
+
 /** Decorator-style helper: `const send = task("send")(async (p) => {...})`. */
 export function task(taskKey: string) {
   return (func: TaskFunc): TaskFunc => {
