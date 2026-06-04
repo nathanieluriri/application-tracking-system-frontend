@@ -14,7 +14,7 @@ import { AgentSkeleton } from "./AgentSkeleton";
 function relativeTime(ts: number | null): string {
   if (!ts) return "";
   try {
-    return formatDistanceToNow(new Date(ts), { addSuffix: true });
+    return formatDistanceToNow(new Date(ts * 1000), { addSuffix: true });
   } catch {
     return "";
   }

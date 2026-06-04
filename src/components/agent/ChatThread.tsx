@@ -33,7 +33,11 @@ interface SendVariables {
   confirmToken?: string;
 }
 
-export function ChatThread() {
+interface ChatThreadProps {
+  userName?: string;
+}
+
+export function ChatThread({ userName }: ChatThreadProps) {
   const { conversationId, setConversationId, mode } = useAgentPanel();
   const queryClient = useQueryClient();
 
@@ -125,7 +129,7 @@ export function ChatThread() {
             <div className="flex flex-1 flex-col items-center justify-center gap-4 py-12 text-center">
               <Sparkles className="h-8 w-8 text-primary" />
               <p className="text-base font-medium text-foreground">
-                Hello 👋 How can I help you today?
+                Hello {userName ? `${userName} ` : ""}👋 How can I help you today?
               </p>
               <SuggestionChips
                 suggestions={STARTER_SUGGESTIONS}

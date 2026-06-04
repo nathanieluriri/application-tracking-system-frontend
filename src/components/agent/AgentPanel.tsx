@@ -23,7 +23,11 @@ const MODE_LABELS: Record<AutonomyMode, string> = {
   auto_run: "Auto-run",
 };
 
-export function AgentPanel() {
+interface AgentPanelProps {
+  userName?: string;
+}
+
+export function AgentPanel({ userName }: AgentPanelProps) {
   const { open, setOpen, tab, setTab, mode, setMode, newChat } =
     useAgentPanel();
 
@@ -126,7 +130,7 @@ export function AgentPanel() {
 
         {/* Body */}
         <div className="min-h-0 flex-1">
-          {tab === "chat" ? <ChatThread /> : <HistoryList />}
+          {tab === "chat" ? <ChatThread userName={userName} /> : <HistoryList />}
         </div>
       </aside>
     </>

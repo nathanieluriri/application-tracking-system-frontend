@@ -132,8 +132,16 @@ export async function runTurn(
     }
     const parsed = tool.schema.safeParse(v.payload.args);
     if (!parsed.success) return emptyTurn(input.conversationId, "That request was malformed.");
-    const exec = await tool.execute(parsed.data, ctx);
-    const result: ToolResultSummary = { tool: tool.name, status: "ok", summary: exec.summary };
+    const exec = await tool.execute(parsed.data, ctx).catch((e: unknown) => {
+      const msg = e instanceof Error ? e.message : "tool failed";
+      return { summary: `That didn't work: ${msg}`, data: undefined, __error: true } as const;
+    });
+    const errored = (exec as { __error?: boolean }).__error === true;
+    const result: ToolResultSummary = {
+      tool: tool.name,
+      status: errored ? "error" : "ok",
+      summary: exec.summary,
+    };
     const conversationId = await persist(input.conversationId, ctx.userId, undefined, {
       text: exec.summary,
       toolResults: [result],
@@ -174,7 +182,15 @@ export async function runTurn(
       step("Generating the response", "done"),
     ];
     const history = await loadHistory(input.conversationId, ctx.userId);
-    const llm = await deps.geminiCall({ message, history, registry: deps.registry });
+    let llm: { text: string; toolCalls: ToolCall[] };
+    try {
+      llm = await deps.geminiCall({ message, history, registry: deps.registry });
+    } catch {
+      llm = {
+        text: "I can't reason about that right now — try rephrasing, or ask me to list, move, or close something specific.",
+        toolCalls: [],
+      };
+    }
     if (llm.toolCalls.length > 0) {
       for (const call of llm.toolCalls) {
         const r = await executeCall(call, deps, ctx, input.mode);
