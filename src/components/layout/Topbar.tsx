@@ -5,6 +5,7 @@ import { LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { toast } from "sonner";
+import { AskAiButton } from "@/components/agent/AskAiButton";
 
 interface TopbarProps {
   user?: { name?: string; email?: string };
@@ -39,16 +40,19 @@ export function Topbar({ user }: TopbarProps) {
       <div className="hidden md:block text-sm text-muted-foreground">
         {user?.email ? `Signed in as ${user.email}` : ""}
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={logout}
-        disabled={pending}
-        aria-busy={pending}
-      >
-        <LogOut className="h-4 w-4" />
-        <span>Log out</span>
-      </Button>
+      <div className="flex items-center gap-2">
+        <AskAiButton />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={logout}
+          disabled={pending}
+          aria-busy={pending}
+        >
+          <LogOut className="h-4 w-4" />
+          <span>Log out</span>
+        </Button>
+      </div>
     </header>
   );
 }
