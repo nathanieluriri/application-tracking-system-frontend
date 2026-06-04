@@ -7,10 +7,22 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+.pnp
+.pnp.js
+
+# Build output
 dist
 dist-ssr
+.next/
+out/
+build
+
+# Env
 *.local
+.env
+.env*.local
 
 # Editor directories and files
 .vscode/*
@@ -22,3 +34,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Local file storage (LocalStorageProvider)
+.storage/
+.storage-test/
