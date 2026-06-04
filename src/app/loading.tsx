@@ -1,5 +1,5 @@
-import { PageLoader } from "@/components/feedback/PageLoader";
+import { BrandedSplash } from "@/components/feedback/BrandedSplash";
 
 export default function Loading() {
-  return <PageLoader />;
+  return <BrandedSplash />;
 }

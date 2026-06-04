@@ -35,4 +35,8 @@ export const qk = {
     all: ["widgets"] as const,
     detail: (id: string) => ["widgets", "detail", id] as const,
   },
+  agent: {
+    conversations: ["agent", "conversations"] as const,
+    conversation: (id: string) => ["agent", "conversation", id] as const,
+  },
 } as const;

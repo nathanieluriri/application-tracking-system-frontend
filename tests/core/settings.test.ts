@@ -36,4 +36,9 @@ describe("settings", () => {
     expect(s.emailTransport).toBe("console");
     expect(s.paymentDefaultProvider).toBe("stripe");
   });
+
+  it("reads GEMINI_API_KEY (null when unset)", () => {
+    expect(loadSettings({}).geminiApiKey).toBeNull();
+    expect(loadSettings({ GEMINI_API_KEY: "k-123" }).geminiApiKey).toBe("k-123");
+  });
 });

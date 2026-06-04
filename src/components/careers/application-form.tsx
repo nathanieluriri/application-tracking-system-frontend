@@ -5,9 +5,15 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { applicationSchema, type ApplicationFormValues } from "@/lib/forms/schemas/application";
+import { useUploadWithProgress, type UploadResult } from "@/hooks/useUploadWithProgress";
 
 const fieldClass =
   "w-full rounded-lg border border-white/12 bg-white/[0.03] px-3.5 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition focus:border-emerald-400/60 focus:bg-white/[0.05] focus:ring-2 focus:ring-emerald-400/15";
+
+type ApplicationResponse = {
+  message?: string;
+  data?: { details?: { errors?: Array<{ path?: unknown; message?: string }> } };
+};
 
 export function ApplicationForm({
   positionId,
@@ -28,6 +34,9 @@ export function ApplicationForm({
     formState: { errors, isSubmitting },
   } = useForm<ApplicationFormValues>({ resolver: zodResolver(applicationSchema) });
 
+  // Real upload progress for the CV (the whole multipart submit), via XHR.
+  const cvUpload = useUploadWithProgress<ApplicationResponse>({ url: "/api/applications" });
+
   async function onSubmit(values: ApplicationFormValues) {
     setFormError(null);
     const el = formRef.current;
@@ -44,26 +53,21 @@ export function ApplicationForm({
     const cvInput = el?.elements.namedItem("cv") as HTMLInputElement | null;
     if (cvInput?.files?.[0]) fd.append("cv", cvInput.files[0]);
 
-    let res: Response;
+    let result: UploadResult<ApplicationResponse>;
     try {
-      res = await fetch("/api/applications", { method: "POST", body: fd });
+      result = await cvUpload.upload(fd);
     } catch {
       setFormError("Network error — please check your connection and try again.");
       return;
     }
 
-    let body: { message?: string; data?: { details?: { errors?: Array<{ path?: unknown; message?: string }> } } } | null = null;
-    try {
-      body = await res.json();
-    } catch {
-      body = null;
-    }
+    const { ok, status, data: body } = result;
 
-    if (res.ok) {
+    if (ok) {
       setSubmitted(true);
       return;
     }
-    if (res.status === 422 && body?.data?.details?.errors) {
+    if (status === 422 && body?.data?.details?.errors) {
       for (const issue of body.data.details.errors) {
         const field = Array.isArray(issue.path) ? issue.path[0] : issue.path;
         if (typeof field === "string" && field in ({ full_name: 1, email: 1, phone: 1, location: 1, experience: 1 } as Record<string, number>)) {
@@ -73,11 +77,11 @@ export function ApplicationForm({
       setFormError("Please correct the highlighted fields.");
       return;
     }
-    if (res.status === 429) {
+    if (status === 429) {
       setFormError("It looks like you've already applied recently. Please try again later.");
       return;
     }
-    if (res.status === 403) {
+    if (status === 403) {
       setFormError("Submissions from your network are temporarily blocked.");
       return;
     }
@@ -157,6 +161,24 @@ export function ApplicationForm({
           />
         </label>
       </Field>
+
+      {/* Real upload progress while the CV is being sent. */}
+      {cvUpload.status === "uploading" && cvName ? (
+        <div className="space-y-1.5" aria-live="polite">
+          <div className="flex items-center justify-between text-xs text-zinc-400">
+            <span className="truncate">Uploading {cvName}</span>
+            <span className="ml-3 shrink-0 tabular-nums">
+              {cvUpload.determinate ? `${cvUpload.progress}%` : "…"}
+            </span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-emerald-500 transition-[width] duration-200 ease-out motion-reduce:transition-none"
+              style={{ width: cvUpload.determinate ? `${cvUpload.progress}%` : "100%" }}
+            />
+          </div>
+        </div>
+      ) : null}
 
       {formError && (
         <p

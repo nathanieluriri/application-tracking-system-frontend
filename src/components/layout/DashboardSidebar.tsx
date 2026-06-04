@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NavLink } from "@/components/layout/NavLink";
 import { NAV_ITEMS, type NavItem } from "@/lib/nav/items";
 
 function isActive(item: NavItem, pathname: string): boolean {
@@ -37,26 +37,25 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           const active = isActive(item, pathname);
           const Icon = item.icon;
           return (
-            <Link
+            <NavLink
               key={item.href}
               href={item.href}
               className={cn(
                 "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                "text-sidebar-muted hover:bg-sidebar-accent/80 hover:text-sidebar-foreground",
-                active &&
-                  "bg-sidebar-accent text-sidebar-foreground font-medium",
+                "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                active && "bg-secondary text-primary font-medium",
               )}
               aria-current={active ? "page" : undefined}
             >
               {active ? (
                 <span
                   aria-hidden
-                  className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-r bg-sidebar-primary"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r bg-sidebar-primary"
                 />
               ) : null}
-              <Icon className="h-4 w-4 shrink-0" />
+              <Icon className={cn("h-4 w-4 shrink-0", active && "text-primary")} />
               <span>{item.label}</span>
-            </Link>
+            </NavLink>
           );
         })}
       </nav>
