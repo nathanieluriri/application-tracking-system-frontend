@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ReactNode } from "react";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import "@/styles/globals.css";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
@@ -19,8 +20,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className={`${inter.className} antialiased`}>
         <ThemeProvider>
           <QueryProvider>
-            {children}
-            <ToastProvider />
+            <NuqsAdapter>
+              {children}
+              <ToastProvider />
+            </NuqsAdapter>
           </QueryProvider>
         </ThemeProvider>
       </body>
