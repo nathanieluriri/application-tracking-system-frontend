@@ -65,6 +65,7 @@ export const COLLECTIONS = {
   adminLogs: "admin_logs",
   secretKeys: "secret_keys",
   senderDomains: "sender_domains",
+  widgets: "widgets",
 } as const;
 
 export type CollectionName = (typeof COLLECTIONS)[keyof typeof COLLECTIONS];

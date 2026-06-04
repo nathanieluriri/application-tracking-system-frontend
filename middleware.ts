@@ -14,6 +14,8 @@ const PUBLIC_PREFIXES = [
   // themselves and return a 401 JSON envelope (never a 302 HTML redirect),
   // which the client honours (incl. public endpoints + silent refresh).
   "/api",
+  "/embed", // embeddable widget runtime (widget.js) — public, cross-origin
+  "/careers", // hosted public careers pages + application flow
   "/_next",
   "/favicon.ico",
   "/static",
