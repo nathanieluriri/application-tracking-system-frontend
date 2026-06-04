@@ -4,8 +4,10 @@ import type { GeminiCall } from "@server/agent/orchestrator";
 import { SYSTEM_PROMPT } from "./prompt";
 
 const MODEL = "gemini-2.0-flash";
-const ENDPOINT = (model: string, key: string) =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+// The API key is sent via the `x-goog-api-key` header (NOT the URL query string),
+// so it never lands in access/proxy logs, error traces, or fetch error messages.
+const ENDPOINT = (model: string) =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
 export interface GeminiOptions {
   apiKey: string;
@@ -27,9 +29,12 @@ export function createGeminiCall(opts: GeminiOptions): GeminiCall {
       contents,
       tools: [{ functionDeclarations: registry.toGeminiDeclarations() }],
     };
-    const res = await doFetch(ENDPOINT(MODEL, opts.apiKey), {
+    const res = await doFetch(ENDPOINT(MODEL), {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "x-goog-api-key": opts.apiKey,
+      },
       body: JSON.stringify(body),
     });
     if (!res.ok) {
