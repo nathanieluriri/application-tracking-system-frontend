@@ -28,7 +28,7 @@ export function Topbar({ user }: TopbarProps) {
   }
 
   return (
-    <header className="h-14 flex items-center justify-between border-b bg-background px-4 md:px-6">
+    <header className="sticky top-0 z-20 h-14 flex items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur md:px-6">
       <button
         type="button"
         className="md:hidden inline-flex items-center justify-center rounded-md p-2 hover:bg-muted"

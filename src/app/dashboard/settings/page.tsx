@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SendingDomains } from "@/components/settings/SendingDomains";
 
 export default function SettingsPage() {
   return (
@@ -7,6 +8,9 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-semibold">Settings</h1>
         <p className="text-sm text-muted-foreground">Org and portal settings.</p>
       </header>
+
+      <SendingDomains />
+
       <Card>
         <CardHeader>
           <CardTitle>Profile</CardTitle>

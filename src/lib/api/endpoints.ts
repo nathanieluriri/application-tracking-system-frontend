@@ -20,6 +20,7 @@ export interface ListQuery {
   status?: string;
   position_id?: string;
   search?: string;
+  department?: string;
 }
 
 export const endpoints = {

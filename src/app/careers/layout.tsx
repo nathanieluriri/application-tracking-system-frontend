@@ -18,28 +18,9 @@ const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "Careers";
 export default function CareersLayout({ children }: { children: ReactNode }) {
   return (
     <div
-      className={`${fraunces.variable} relative min-h-screen overflow-hidden bg-[#0b0b0c] text-zinc-100 antialiased`}
+      className={`${fraunces.variable} min-h-screen bg-[#0b0b0c] text-zinc-100 antialiased`}
     >
-      {/* Atmospheric backdrop: a soft emerald glow + faint grid, never loud. */}
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 z-0"
-        style={{
-          background:
-            "radial-gradient(60rem 40rem at 50% -10%, rgba(16,185,129,0.10), transparent 60%)",
-        }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 z-0 opacity-[0.035]"
-        style={{
-          backgroundImage:
-            "linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)",
-          backgroundSize: "64px 64px",
-        }}
-      />
-
-      <div className="relative z-10 flex min-h-screen flex-col">
+      <div className="flex min-h-screen flex-col">
         <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-6 py-7">
           <Link
             href="/careers"
