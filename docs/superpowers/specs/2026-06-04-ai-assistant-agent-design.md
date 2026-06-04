@@ -27,9 +27,9 @@ Generating the response"), per-message thumbs up/down feedback, and tappable
   (keyword + regex + fuzzy match). Embeddings can come later.
 - No streaming token-by-token output in v1 (we stream **discrete steps**, not tokens;
   see §6). Token streaming can be added later behind the same step protocol.
-- No persistence of chat history to MongoDB in v1 — history lives in the browser
-  (localStorage) per the History tab. (A server-side `agent_conversations` collection
-  is a clean later addition; explicitly deferred.)
+- No real-time multi-tab sync of an *open* conversation (history is server-persisted —
+  see §5a — but a second open tab won't live-update mid-turn; it sees new messages on
+  reopen/refetch).
 
 ## 3. Core principles
 
@@ -96,7 +96,15 @@ src/server/agent/
     tokens.ts            # sign/verify a confirmation token (HMAC w/ secretKey)
   types.ts               # ChatTurnInput, ChatTurnOutput, Step, Suggestion, Pending...
 
-src/app/api/agent/chat/route.ts   # thin controller: requireUser + withEnvelope -> runTurn
+  conversations/
+    repository.ts        # Mongo data access for the `conversations` collection
+    service.ts           # createConversation/appendMessages/listForUser/get/rename/delete
+  schemas/
+    conversation.ts      # zod ConversationDoc/Out + message shape + normalizers
+
+src/app/api/agent/chat/route.ts            # thin controller: requireUser + withEnvelope -> runTurn
+src/app/api/agent/conversations/route.ts   # GET list (History tab), POST new
+src/app/api/agent/conversations/[id]/route.ts  # GET one, PATCH rename, DELETE
 
 src/components/agent/
   AskAiButton.tsx        # the topbar pill that opens the panel
@@ -109,10 +117,66 @@ src/components/agent/
   Composer.tsx           # textarea + send; disabled mic/+ buttons
   AgentSkeleton.tsx      # loading skeleton for the panel (per loading rules)
 src/lib/agent/
-  client.ts              # POST /api/agent/chat wrapper (typed)
-  history.ts             # localStorage conversation store (History tab)
-  store.ts               # zustand/context: open state, mode, current thread
+  client.ts              # typed wrappers: chat() + conversations CRUD
+  store.ts               # zustand/context: open state, mode, current conversation id
+  hooks.ts               # TanStack Query hooks for conversations list/detail
 ```
+
+## 5a. Conversation persistence (server-side, v1)
+
+Chat history is stored in MongoDB, not the browser. This syncs across devices,
+survives cache clears, and gives an audit trail of agent actions per user.
+
+**Collection:** `conversations` (added to `COLLECTIONS` in `core/database.ts`).
+
+**`ConversationDoc` (schema/conversation.ts, mirrors the existing schema pattern):**
+```
+{
+  _id, owner_id,                       // the admin/user who owns it (scopes all queries)
+  title,                              // auto-derived from first user message; renamable
+  messages: [
+    {
+      id, role,                       // "user" | "assistant"
+      text,
+      steps?,                         // the plan steps shown (assistant only)
+      tool_results?,                  // [{ tool, status, summary }] — what ran (audit)
+      suggestions?,                   // suggested follow-ups offered
+      feedback?,                      // "up" | "down" | null (thumbs)
+      created_at
+    }
+  ],
+  status,                            // "open" | "closed"
+  created_at, last_updated
+}
+```
+A `ConversationOut` normalizer maps `_id`→`id` and strips internal fields, exactly like
+`positionOut`. All repository queries are **scoped by `owner_id`** so a user can only
+ever read/modify their own conversations (enforced again at the service layer from the
+authenticated principal — never trust an `owner_id` from the client).
+
+**Service** (`agent/conversations/service.ts`): `createConversation(ownerId, firstMsg)`,
+`appendMessages(id, ownerId, msgs)`, `listForUser(ownerId, start, stop)` (returns
+lightweight summaries: id, title, last_updated, status — not full message arrays),
+`getForUser(id, ownerId)`, `rename(id, ownerId, title)`, `setFeedback(id, ownerId,
+messageId, value)`, `deleteForUser(id, ownerId)`.
+
+**Persistence in the turn:** `runTurn` receives an optional `conversationId`. If absent,
+it creates a conversation (title from the first message) and returns the new id. After
+producing the reply it appends both the user message and the assistant message
+(including `tool_results` for audit). A **pending-confirmation** turn persists the
+assistant message with the pending action recorded; the later confirm turn appends the
+execution result to the same conversation.
+
+**Endpoints:**
+- `GET /api/agent/conversations?start&stop` → History tab list (summaries).
+- `POST /api/agent/conversations` → start an empty conversation (optional; chat can
+  auto-create).
+- `GET /api/agent/conversations/[id]` → full thread (owner-scoped).
+- `PATCH /api/agent/conversations/[id]` → rename.
+- `DELETE /api/agent/conversations/[id]` → delete.
+- Thumbs feedback: `PATCH /api/agent/conversations/[id]` with `{ messageId, feedback }`.
+
+All endpoints are `requireUser` + `withEnvelope` and owner-scoped.
 
 ### Turn flow
 
@@ -137,7 +201,9 @@ runTurn(message, history, mode, req):
             result = await tool.execute(args, { userId, req })
   4. compose final text (+ optionally a second Gemini pass to narrate results)
   5. suggestions = deriveSuggestions(intent/result)
-  6. return { text, steps, toolResults, suggestions, pending? }
+  6. persist: ensure conversation (create if no conversationId), append user +
+     assistant messages (with tool_results for audit)
+  7. return { conversationId, text, steps, toolResults, suggestions, pending? }
 ```
 
 ### Confirm round-trip
@@ -252,7 +318,9 @@ Below `THRESHOLD` confidence → fall through to Gemini. The router is a pure fu
   thumbs up/down + `SuggestionChips`.
 - **Confirm card:** preview of the pending action with Confirm / Cancel.
 - **Composer:** textarea, send button; mic and "+" rendered **disabled** (v1 non-goals).
-- **History tab:** list of past local conversations (localStorage), click to reopen.
+- **History tab:** server-backed list of the user's past conversations (TanStack Query
+  over `GET /api/agent/conversations`), click to reopen the full thread; rename/delete
+  available. Optimistic thumbs up/down persisted via PATCH.
 - **Loading/feedback:** follows CLAUDE.md §3 — `AgentSkeleton` for cold panel load,
   `<ButtonLoading>` semantics on send, reduced-motion respected on step animation, one
   live region for the in-flight status.
@@ -261,14 +329,17 @@ Below `THRESHOLD` confidence → fall through to Gemini. The router is a pure fu
 
 ```
 Composer.send(text)
-  → lib/agent/client.chat({ message, history, mode })
+  → lib/agent/client.chat({ conversationId?, message, mode })
   → POST /api/agent/chat  (requireUser, withEnvelope)
-  → orchestrator.runTurn(...)
-  → { text, steps, toolResults, suggestions, pending? }
+  → orchestrator.runTurn(...)  → persists messages to `conversations`
+  → { conversationId, text, steps, toolResults, suggestions, pending? }
   → ChatThread renders; if pending → ConfirmCard
-  → on Confirm: client.chat({ confirmToken }) → executes → result appended
-  → lib/agent/history.save(thread)  (localStorage)
+  → on Confirm: client.chat({ conversationId, confirmToken }) → executes → appended
+  → History tab reads server conversations via TanStack Query (no localStorage)
 ```
+History context sent to the LLM is loaded **server-side** from the conversation by id
+(the client sends `conversationId`, not the full transcript), so the browser can't
+tamper with prior turns and the payload stays small.
 
 ## 13. Error handling
 
@@ -287,29 +358,37 @@ Composer.send(text)
   mode matrix), auth gate (permission denied blocks execution), and token round-trip.
 - **Gemini layer:** mocked; assert declaration generation from registry and tool-call
   parsing. No real API calls in tests.
+- **Conversation service/repo:** owner-scoping (user A cannot read/rename/delete user
+  B's conversation), append on each turn, list returns summaries not full threads,
+  feedback PATCH — against in-memory Mongo.
 - **Route integration:** `/api/agent/chat` happy path + confirm round-trip + auth
-  failure, via the existing route integration harness.
+  failure; `/api/agent/conversations*` list/get/rename/delete with owner-scoping — via
+  the existing route integration harness.
 - **UI:** component tests for ConfirmCard (Confirm executes, Cancel drops),
   SuggestionChips (click sends), StepProgress (reduced-motion).
 
 ## 15. Build order (informs the plan)
 
 1. `agent/types.ts` + `tools/types.ts` + `tools/registry.ts` (contracts first).
-2. Tool wrappers for **Positions** + registry wiring + tests (reference vertical).
-3. Intent router (positions intents) + tests.
-4. Orchestrator with confirm + auth gates + tests (no LLM yet — router-only).
-5. `/api/agent/chat` route + integration tests (router-only end to end).
-6. Gemini layer (`settings` key, `gemini.ts`, two-pass) + mocked tests; wire fallback.
-7. Remaining tool verticals: Applicants, Emails/templates, Admin (+ tests each).
-8. UI: panel shell + topbar button → thread → steps → confirm → suggestions → history.
-9. Polish: skeletons, reduced-motion, mode selector, empty state, disabled mic/+.
+2. **Conversation persistence:** `conversations` collection, `schemas/conversation.ts`,
+   repository + service (owner-scoped) + tests (in-memory Mongo).
+3. Tool wrappers for **Positions** + registry wiring + tests (reference vertical).
+4. Intent router (positions intents) + tests.
+5. Orchestrator with confirm + auth gates + persistence + tests (no LLM yet — router-only).
+6. `/api/agent/chat` + `/api/agent/conversations*` routes + integration tests
+   (router-only end to end, incl. history list/get/rename/delete + owner-scoping).
+7. Gemini layer (`settings` key, `gemini.ts`, two-pass) + mocked tests; wire fallback.
+8. Remaining tool verticals: Applicants, Emails/templates, Admin (+ tests each).
+9. UI: panel shell + topbar button → thread → steps → confirm → suggestions →
+   History tab (server-backed) → thumbs feedback.
+10. Polish: skeletons, reduced-motion, mode selector, empty state, disabled mic/+.
 
 Each step is independently testable and leaves the app working.
 
 ## 16. Open decisions deferred to later (not v1)
 
-- Server-side conversation persistence (`agent_conversations` collection).
 - Token streaming via SSE.
+- Real-time multi-tab live sync of an open conversation.
 - Voice input and file attachments.
 - Embeddings-based NLU.
 - "Auto-run" vs "Smart" divergence for a future granular `write` gate.
