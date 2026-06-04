@@ -9,7 +9,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "seed": "bun run scripts/seed.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -4,17 +4,9 @@
  * A permission key is `METHOD:/normalized/path`.
  */
 
-export interface Permission {
-  name: string;
-  methods: string[];
-  path: string;
-  key?: string;
-  description?: string | null;
-}
+import type { Permission, PermissionList } from "@server/schemas/common";
 
-export interface PermissionList {
-  permissions: Permission[];
-}
+export type { Permission, PermissionList };
 
 export function makePermissionKey(method: string, path: string): string {
   const normalized =
@@ -33,6 +25,8 @@ export function hasPermission(
 ): boolean {
   const method = ctx.method.toUpperCase();
   for (const permission of list.permissions) {
+    // Wildcard grant (full-access admins / super admin).
+    if (permission.key === "*") return true;
     if (permission.key && permission.key === ctx.key) return true;
     // Legacy name+method fallback.
     if (permission.name === ctx.name && permission.methods.map((m) => m.toUpperCase()).includes(method)) {

@@ -1,6 +1,9 @@
-import { NextRequest } from "next/server";
-import { forwardToFastAPI } from "../../_lib/proxy";
+import { withEnvelope } from "@server/http/with-envelope";
+import { checkUserAccountStatusAndPermissions } from "@server/security/account-status";
 
-export async function GET(req: NextRequest) {
-  return forwardToFastAPI(req, "/v1/users/me", { method: "GET", noBody: true });
-}
+export const GET = withEnvelope(
+  async (req) => {
+    return checkUserAccountStatusAndPermissions(req, "GET:/users/me");
+  },
+  { message: "User profile fetched successfully" },
+);

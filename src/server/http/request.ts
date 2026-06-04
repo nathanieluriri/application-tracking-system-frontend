@@ -1,6 +1,22 @@
 import type { ZodType } from "zod";
 import { AppError, ErrorCode } from "@server/core/errors";
 import { authInputFromHeaders, type AuthInput } from "@server/security/auth";
+import { REFRESH_COOKIE } from "@server/security/cookies";
+
+function cookieValue(req: Request, name: string): string | null {
+  const cookie = req.headers.get("cookie");
+  if (!cookie) return null;
+  for (const part of cookie.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq === -1) continue;
+    if (part.slice(0, eq).trim() === name) return part.slice(eq + 1).trim();
+  }
+  return null;
+}
+
+export function refreshTokenFromRequest(req: Request): string | null {
+  return cookieValue(req, REFRESH_COOKIE);
+}
 
 /**
  * Next-aware request helpers used by route-handler controllers. These read the

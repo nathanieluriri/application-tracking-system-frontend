@@ -19,4 +19,10 @@ describe("permission keys", () => {
     expect(hasPermission(list, { key: "GET:/v1/x", name: "get_x", method: "GET" })).toBe(true);
     expect(hasPermission(list, { key: "GET:/v1/x", name: "get_x", method: "POST" })).toBe(false);
   });
+
+  it("grants everything when a wildcard '*' key is present", () => {
+    const list = { permissions: [{ name: "superuser", methods: ["*"], path: "*", key: "*" }] };
+    expect(hasPermission(list, { key: "GET:/anything", name: "x", method: "GET" })).toBe(true);
+    expect(hasPermission(list, { key: "DELETE:/whatever", name: "y", method: "DELETE" })).toBe(true);
+  });
 });

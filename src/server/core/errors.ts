@@ -13,6 +13,9 @@ export enum ErrorCode {
   VALIDATION_FAILED = "VALIDATION_FAILED",
   TOO_MANY_REQUESTS = "TOO_MANY_REQUESTS",
   INTERNAL_ERROR = "INTERNAL_ERROR",
+  CONFLICT = "CONFLICT",
+  UNAUTHORIZED = "UNAUTHORIZED",
+  BAD_REQUEST = "BAD_REQUEST",
   PAYMENT_PROVIDER_ERROR = "PAYMENT_PROVIDER_ERROR",
   PAYMENT_WEBHOOK_INVALID = "PAYMENT_WEBHOOK_INVALID",
   DOCUMENT_UPLOAD_INVALID = "DOCUMENT_UPLOAD_INVALID",
@@ -73,6 +76,22 @@ export function authPermissionDenied(permissionKey: string): AppError {
     message: "Insufficient permissions",
     details: { permission_key: permissionKey },
   });
+}
+
+export function conflict(message: string, details?: unknown): AppError {
+  return new AppError({ status: 409, code: ErrorCode.CONFLICT, message, details });
+}
+
+export function unauthorized(message = "Unauthorized", details?: unknown): AppError {
+  return new AppError({ status: 401, code: ErrorCode.UNAUTHORIZED, message, details });
+}
+
+export function badRequest(message: string, details?: unknown): AppError {
+  return new AppError({ status: 400, code: ErrorCode.BAD_REQUEST, message, details });
+}
+
+export function notFound(message: string, details?: unknown): AppError {
+  return new AppError({ status: 404, code: ErrorCode.RESOURCE_NOT_FOUND, message, details });
 }
 
 export function resourceNotFound(resource: string, resourceId?: string | null): AppError {
