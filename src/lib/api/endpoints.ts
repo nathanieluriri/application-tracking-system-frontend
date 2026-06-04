@@ -80,6 +80,22 @@ export const endpoints = {
     get: () => `/api/settings/`,
     update: () => `/api/settings/`,
   },
+  senderDomains: {
+    list: () => `/api/sender-domains/`,
+    create: () => `/api/sender-domains/`,
+    get: (id: string) => `/api/sender-domains/${id}`,
+    verify: (id: string) => `/api/sender-domains/${id}/verify`,
+    remove: (id: string) => `/api/sender-domains/${id}`,
+  },
+  widgets: {
+    list: () => `/api/widgets/`,
+    get: (id: string) => `/api/widgets/${id}`,
+    create: () => `/api/widgets/`,
+    update: (id: string) => `/api/widgets/${id}`,
+    duplicate: (id: string) => `/api/widgets/${id}/duplicate`,
+    remove: (id: string) => `/api/widgets/${id}`,
+    publicData: (id: string) => `/api/public/widgets/${id}`,
+  },
   dashboard: {
     overview: (forceRefresh = false) =>
       `/api/dashboard/overview${forceRefresh ? "?force_refresh=true" : ""}`,

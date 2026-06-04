@@ -5,6 +5,7 @@ import {
   Mail,
   FileText,
   Briefcase,
+  LayoutGrid,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -47,6 +48,12 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/dashboard/positions",
     icon: Briefcase,
     match: ["/dashboard/positions"],
+  },
+  {
+    label: "Widgets",
+    href: "/dashboard/widgets",
+    icon: LayoutGrid,
+    match: ["/dashboard/widgets"],
   },
   {
     label: "Settings",

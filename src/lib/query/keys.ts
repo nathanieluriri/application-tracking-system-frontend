@@ -27,4 +27,12 @@ export const qk = {
     overview: ["dashboard", "overview"] as const,
   },
   settings: ["settings"] as const,
+  senderDomains: {
+    all: ["sender-domains"] as const,
+    detail: (id: string) => ["sender-domains", "detail", id] as const,
+  },
+  widgets: {
+    all: ["widgets"] as const,
+    detail: (id: string) => ["widgets", "detail", id] as const,
+  },
 } as const;
