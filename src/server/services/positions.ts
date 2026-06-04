@@ -50,6 +50,18 @@ export async function retrieveOpenPositions(start = 0, stop = 100): Promise<Posi
   return getPositions({ status: "open" }, start, stop);
 }
 
+/**
+ * Public single-role lookup for the hosted careers pages. Only OPEN roles are
+ * visible; anything else (missing, closed, draft, malformed id) is a 404 so we
+ * never leak the existence of non-open roles to the public.
+ */
+export async function retrievePublicPositionById(id: string): Promise<PositionOut> {
+  if (!isValidObjectId(id)) throw notFound("Position not found");
+  const result = await getPosition({ _id: toObjectId(id)!, status: "open" });
+  if (!result) throw notFound("Position not found");
+  return result;
+}
+
 export async function updatePositionById(
   id: string,
   data: PositionUpdateInput,
