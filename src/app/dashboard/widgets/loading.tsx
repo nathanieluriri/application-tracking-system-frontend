@@ -1,16 +1,18 @@
+import { Skeleton } from "@/components/ui/skeleton";
+
 export default function WidgetsLoading() {
   return (
     <div className="space-y-6">
       <div className="flex items-end justify-between">
-        <div>
-          <div className="h-7 w-32 animate-pulse rounded bg-muted" />
-          <div className="mt-2 h-4 w-64 animate-pulse rounded bg-muted/60" />
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-32" />
+          <Skeleton className="h-4 w-64" />
         </div>
-        <div className="h-9 w-28 animate-pulse rounded bg-muted" />
+        <Skeleton className="h-9 w-28" />
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-32 animate-pulse rounded-lg border bg-muted/40" />
+          <Skeleton key={i} className="h-32 rounded-lg" />
         ))}
       </div>
     </div>
