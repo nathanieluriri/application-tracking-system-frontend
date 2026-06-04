@@ -1,16 +1,23 @@
 import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react-swc";
-import path from "path";
+import { resolve } from "node:path";
 
 export default defineConfig({
-  plugins: [react()],
   test: {
-    environment: "jsdom",
+    environment: "node",
     globals: true,
-    setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    include: ["tests/**/*.test.ts"],
+    setupFiles: ["tests/helpers/setup.ts"],
+    hookTimeout: 120_000, // first mongodb-memory-server download can be slow
+    testTimeout: 20_000,
+    // Repository/integration suites each spin up their own in-memory Mongo and
+    // mutate process.env. Run test files serially so they don't race on the
+    // process-level connection singleton.
+    fileParallelism: false,
   },
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    alias: {
+      "@server": resolve(__dirname, "./src/server"),
+      "@": resolve(__dirname, "./src"),
+    },
   },
 });
