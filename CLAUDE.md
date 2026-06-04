@@ -1,19 +1,21 @@
 # Frontend Rules — applicant-tracking-system-frontend
 
-This is a **Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui** application that masks a FastAPI backend behind its own `/api/...` route handlers. Read these rules before changing anything in this folder.
+This is a **Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui** application whose **backend now lives inside this app** — the former FastAPI service has been migrated into TypeScript under `src/server/` and is served by the `/api/...` route handlers. **MongoDB is the only external dependency.** Read these rules before changing anything in this folder.
 
-The full migration design lives at the repo root: `../frontend.plan.md`. When in doubt, that is the source of truth — this file is the short list of rules.
+The backend migration design + plan live at `docs/superpowers/specs/2026-06-04-nextjs-backend-migration-design.md` and `docs/superpowers/plans/`. The original FastAPI source remains in `../application-tracking-system-backend/` as a behavior reference (oracle) only — it is no longer required at runtime.
 
 ---
 
 ## 1. Architecture rules (non-negotiable)
 
 - **App Router only.** No `pages/` directory. New routes go under `src/app/`.
-- **Auth uses `httpOnly` cookies.** `access_token` and `refresh_token` are set by FastAPI and forwarded by our BFF. **Never** read or write tokens from JavaScript. **Never** put tokens in `localStorage` or `sessionStorage`.
-- **The browser never talks to FastAPI directly.** Every client call goes to `/api/...` on this Next.js app, which proxies to FastAPI server-side. If you find yourself writing `fetch('http://...:8000/...')` in a client component, stop — add a route handler instead.
-- **`middleware.ts` is the auth gate.** It checks for the `access_token` cookie and 302s unauthenticated users to `/login?next=<path>`. Don't duplicate that check in every page.
-- **Real auth is enforced by FastAPI on every BFF call.** Middleware is optimistic; trust the upstream 401.
-- **`FASTAPI_BASE_URL` is server-only.** Never import it into a client component. Never prefix it with `NEXT_PUBLIC_`.
+- **The backend is layered under `src/server/`**, mirroring the FastAPI structure: `core/` (db, settings, errors, response-envelope, queue, storage, email, payments, cache), `schemas/` (zod + normalizers), `repositories/` (Mongo data access), `services/` (framework-agnostic business logic — **no `next/*` imports**), `security/` (jwt, tokens, auth, account-status, rate-limit), `http/` (withEnvelope, guards, request helpers). Route handlers are **thin controllers**: validate → call a service → wrap with `withEnvelope`.
+- **Layering rule:** nothing below `src/server/http/` may import `next/*`. Services/repositories/schemas run directly under Vitest. Only `http/` + `app/api/**` are Next-aware.
+- **Auth uses `httpOnly` cookies.** `access_token` and `refresh_token` are set by our own route handlers (`http/auth-response.ts`). **Never** read or write tokens from JavaScript. **Never** put tokens in `localStorage`/`sessionStorage`.
+- **The browser only talks to `/api/...`.** Client code calls `/api/...` (see `lib/api/client.ts` + `endpoints.ts`); RSC pages prefetch via `lib/api/server.ts` (which now calls the in-process `/api` same-origin). Never `fetch('http://...:8000/...')` — there is no separate backend.
+- **`middleware.ts` is the optimistic auth gate** (checks the `access_token` cookie, 302s to `/login`). Real auth is enforced server-side by the route handlers' guards (`requireUser`/`requireAdmin`/`checkAdminAccountStatusAndPermissions`); trust those, not the middleware.
+- **Tests:** Vitest + in-memory Mongo (`bun test`). Service/repository/security logic is unit-tested; route handlers have integration tests. Mirror `tests/<layer>/`.
+- **Seeding:** `bun run seed` creates a super admin (full permissions). Auth wire-contract: response envelope `{ success, message, data }`, roles `user`/`admin`.
 
 ## 2. Routing & navigation rules
 
@@ -117,27 +119,32 @@ When you add a new feature, follow this layout. When in doubt, mimic the `applic
 ## 11. Things to never do
 
 - Never write `localStorage.setItem('token', ...)` or any cousin of it.
-- Never expose `FASTAPI_BASE_URL` to the client.
 - Never put a primary user flow inside a `<Dialog>` / `<Sheet>` modal — use a route.
 - Never block a route with a generic spinner when a skeleton would fit.
 - Never hand-roll a chart with raw `<svg>` or div-width hacks when Tremor / recharts can render it.
 - Never invent a new colour outside the design tokens.
-- Never bypass the BFF by calling FastAPI directly from the browser.
+- Never import `next/*` from `src/server/services`, `repositories`, `schemas`, or `core` — keep them framework-agnostic and unit-testable.
+- Never use `zod` `.default()` on a request field that a route body/query parses (it desyncs `z.infer` input/output types) — make it `.optional()` and default in the `*CreateDoc` builder/service.
 - Never log tokens, cookies, or PII to the console.
 
 ## 12. Useful commands
 
 ```
-bun dev              # local dev (Next.js)
+bun dev              # local dev (Next.js — serves the whole app + backend)
 bun build            # production build
 bun lint
+bun test             # vitest (server unit + route integration tests)
+bun run seed         # create a super admin (full permissions)
 bunx shadcn@latest add <component>
 bunx tsc --noEmit    # type check
 ```
 
+Requires MongoDB running (`MONGODB_URI` in `.env.local`, default `mongodb://localhost:27017`).
+
 ## 13. Pointers
 
-- Migration plan: `../frontend.plan.md`
-- Backend (FastAPI) routes: `../application-tracking-system-backend/api/v1/`
-- Backend cookie helpers: `../application-tracking-system-backend/security/cookies.py`
-- Response envelope shape: `../application-tracking-system-backend/core/response_envelope.py`
+- Backend migration design: `docs/superpowers/specs/2026-06-04-nextjs-backend-migration-design.md`
+- Server code: `src/server/` (core / schemas / repositories / services / security / http)
+- API route handlers: `src/app/api/`
+- Auth/cookies/envelope: `src/server/security/`, `src/server/http/auth-response.ts`, `src/server/core/response-envelope.ts`
+- Behavior oracle (legacy, runtime-unused): `../application-tracking-system-backend/`

@@ -23,6 +23,7 @@ export const POST = withEnvelope(
   async (req) => {
     const secret = process.env.RESEND_WEBHOOK_SECRET;
     const body = await req.text();
+    const isProduction = (process.env.ENV ?? "development").toLowerCase() === "production";
 
     if (secret) {
       const signature = req.headers.get("svix-signature");
@@ -33,6 +34,14 @@ export const POST = withEnvelope(
           message: "Invalid webhook signature",
         });
       }
+    } else if (isProduction) {
+      // Fail closed in production: never accept unauthenticated, status-mutating
+      // webhooks. The bypass below is only for local/dev convenience.
+      throw new AppError({
+        status: 503,
+        code: ErrorCode.AUTH_INVALID_TOKEN,
+        message: "Webhook secret is not configured",
+      });
     }
 
     let event: Record<string, any>;

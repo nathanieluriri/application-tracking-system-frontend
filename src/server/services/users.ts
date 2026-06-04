@@ -59,6 +59,33 @@ export async function authenticateUser(input: UserLogin): Promise<UserOut> {
   return attachTokens(user);
 }
 
+/**
+ * Google OAuth login: find-or-create a user by email, then issue tokens.
+ * Mirrors `authenticate_user_google` in the FastAPI user service.
+ */
+export async function authenticateUserGoogle(profile: {
+  email: string;
+  firstName: string;
+  lastName: string;
+}): Promise<UserOut> {
+  let user = await getUser({ email: profile.email });
+  if (!user) {
+    // Random unusable local password — the user authenticates via Google.
+    const passwordHash = await hashPassword(crypto.randomUUID());
+    user = await createUser(
+      userCreateDoc({
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        email: profile.email,
+        loginType: LoginType.google,
+        passwordHash,
+        permissionList: defaultUserPermissions(),
+      }),
+    );
+  }
+  return attachTokens(user);
+}
+
 export async function refreshUserTokens(
   refreshToken: string,
   expiredAccessTokenId: string,

@@ -1,15 +1,15 @@
 import "server-only";
 import { cookies, headers } from "next/headers";
 
-const FASTAPI_BASE_URL = process.env.FASTAPI_BASE_URL ?? "http://localhost:8000";
-
 interface ServerFetchOptions extends Omit<RequestInit, "headers"> {
   headers?: Record<string, string>;
 }
 
 /**
- * RSC fetcher. Calls FastAPI directly (not via /api) so RSC pages don't loop
- * through their own BFF route handlers — but it forwards the same auth cookies.
+ * RSC fetcher. Calls this app's own in-process `/api/*` route handlers
+ * (same origin) and forwards the caller's auth cookies. Legacy `/v1/*` paths
+ * are transparently mapped to `/api/*` so existing RSC pages keep working after
+ * the backend was migrated into Next.js.
  */
 export async function serverFetch<T = unknown>(
   path: string,
@@ -32,12 +32,18 @@ export async function serverFetch<T = unknown>(
   const xff = reqHeaders.get("x-forwarded-for");
   if (xff) finalHeaders["x-forwarded-for"] = xff;
 
-  const upstream = path.startsWith("http") ? path : `${FASTAPI_BASE_URL}${path}`;
-  const res = await fetch(upstream, {
-    ...init,
-    headers: finalHeaders,
-    cache: "no-store",
-  });
+  // Map legacy FastAPI paths (/v1/...) onto the in-process API (/api/...).
+  let apiPath = path;
+  if (path.startsWith("/v1/")) apiPath = `/api/${path.slice(4)}`;
+
+  let url = apiPath;
+  if (!apiPath.startsWith("http")) {
+    const host = reqHeaders.get("x-forwarded-host") ?? reqHeaders.get("host") ?? "localhost:3000";
+    const proto = reqHeaders.get("x-forwarded-proto") ?? "http";
+    url = `${proto}://${host}${apiPath}`;
+  }
+
+  const res = await fetch(url, { ...init, headers: finalHeaders, cache: "no-store" });
 
   if (!res.ok) {
     return { status: res.status, data: null };
