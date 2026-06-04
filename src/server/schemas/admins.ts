@@ -15,7 +15,8 @@ export const adminSignupSchema = z.object({
   full_name: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(1),
-  accountStatus: z.nativeEnum(AccountStatus).default(AccountStatus.ACTIVE),
+  // Optional on the wire; defaulted in adminCreateDoc.
+  accountStatus: z.nativeEnum(AccountStatus).optional(),
   permissionList: permissionListSchema.nullable().optional(),
 });
 export type AdminSignup = z.infer<typeof adminSignupSchema>;
