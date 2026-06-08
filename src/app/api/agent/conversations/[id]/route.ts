@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { withEnvelope } from "@server/http/with-envelope";
 import { parseJsonBody } from "@server/http/request";
-import { requireAdmin } from "@server/http/guards";
+import { requireAny } from "@server/http/guards";
 import {
   getForOwner,
   renameForOwner,
@@ -11,7 +11,7 @@ import {
 
 export const GET = withEnvelope(
   async (req, ctx) => {
-    const principal = await requireAdmin(req);
+    const principal = await requireAny(req);
     const { id } = await ctx.params;
     return getForOwner(String(id), principal.userId);
   },
@@ -26,7 +26,7 @@ const patchBody = z.object({
 
 export const PATCH = withEnvelope(
   async (req, ctx) => {
-    const principal = await requireAdmin(req);
+    const principal = await requireAny(req);
     const { id } = await ctx.params;
     const body = await parseJsonBody(req, patchBody);
     if (body.messageId !== undefined && body.feedback !== undefined) {
@@ -42,7 +42,7 @@ export const PATCH = withEnvelope(
 
 export const DELETE = withEnvelope(
   async (req, ctx) => {
-    const principal = await requireAdmin(req);
+    const principal = await requireAny(req);
     const { id } = await ctx.params;
     return deleteForOwner(String(id), principal.userId);
   },
