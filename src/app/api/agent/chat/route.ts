@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { withEnvelope } from "@server/http/with-envelope";
 import { parseJsonBody } from "@server/http/request";
-import { checkAdminAccountStatusAndPermissions } from "@server/security/account-status";
-import { requireAdmin } from "@server/http/guards";
+import { checkAccountStatusAndPermissions } from "@server/security/account-status";
+import { requireAny } from "@server/http/guards";
 import { getSettings } from "@server/core/settings";
 import { getRegistry } from "@server/agent/tools";
 import { runTurn } from "@server/agent/orchestrator";
@@ -17,7 +17,9 @@ const bodySchema = z.object({
 
 export const POST = withEnvelope(
   async (req) => {
-    const principal = await requireAdmin(req);
+    // Either a user or an admin principal may use the assistant; per-tool
+    // authorization is enforced in the orchestrator via the role-aware checker.
+    const principal = await requireAny(req);
     const body = await parseJsonBody(req, bodySchema);
     const settings = getSettings();
 
@@ -35,7 +37,7 @@ export const POST = withEnvelope(
       { userId: principal.userId, req },
       {
         registry: getRegistry(),
-        checkPermission: (r, key) => checkAdminAccountStatusAndPermissions(r, key),
+        checkPermission: (r, key) => checkAccountStatusAndPermissions(r, key),
         secret: settings.secretKey,
         geminiCall,
       },

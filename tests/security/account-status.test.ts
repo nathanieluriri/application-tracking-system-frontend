@@ -5,6 +5,7 @@ import { closeDb, COLLECTIONS } from "@server/core/database";
 import {
   checkUserAccountStatusAndPermissions,
   checkAdminAccountStatusAndPermissions,
+  checkAccountStatusAndPermissions,
 } from "@server/security/account-status";
 import { addUser } from "@server/services/users";
 import { addAdmin } from "@server/services/admins";
@@ -45,8 +46,31 @@ describe("account-status guards", () => {
     expect(result.password).toBeNull();
   });
 
-  it("denies a permission the user does not hold", async () => {
+  it("grants a back-office permission to a default self-signup user (wildcard)", async () => {
+    // Default users now carry the same wildcard back-office grant as admins.
     const user = await addUser(signup);
+    const result = await checkUserAccountStatusAndPermissions(
+      reqWithCookie(user.access_token!),
+      "GET:/applications",
+    );
+    expect(result.id).toBe(user.id);
+  });
+
+  it("still denies a permission when the user has an explicit narrow list", async () => {
+    const user = await addUser(signup);
+    // Override the default wildcard with a narrow list to prove per-user lists win.
+    await db.collection(COLLECTIONS.users).updateOne(
+      { _id: new ObjectId(user.id!) },
+      {
+        $set: {
+          permissionList: {
+            permissions: [
+              { name: "me", methods: ["GET"], path: "/users/me", key: "GET:/users/me" },
+            ],
+          },
+        },
+      },
+    );
     await expect(
       checkUserAccountStatusAndPermissions(reqWithCookie(user.access_token!), "GET:/applications"),
     ).rejects.toMatchObject({ code: "AUTH_PERMISSION_DENIED" });
@@ -75,5 +99,37 @@ describe("account-status guards", () => {
       "GET:/applications",
     );
     expect(result.id).toBe(admin.id);
+  });
+
+  describe("checkAccountStatusAndPermissions (role-aware)", () => {
+    it("accepts a user principal and enforces against the user account", async () => {
+      const user = await addUser(signup);
+      const result = await checkAccountStatusAndPermissions(
+        reqWithCookie(user.access_token!),
+        "POST:/positions",
+      );
+      expect(result.id).toBe(user.id);
+    });
+
+    it("accepts an admin principal and enforces against the admin account", async () => {
+      const admin = await addAdmin({
+        full_name: "Adm",
+        email: "adm2@example.com",
+        password: "pw123456",
+        accountStatus: AccountStatus.ACTIVE,
+        permissionList: null,
+      });
+      const result = await checkAccountStatusAndPermissions(
+        reqWithCookie(admin.access_token!),
+        "POST:/positions",
+      );
+      expect(result.id).toBe(admin.id);
+    });
+
+    it("rejects an unauthenticated request", async () => {
+      await expect(
+        checkAccountStatusAndPermissions(new Request("http://x"), "GET:/positions"),
+      ).rejects.toBeTruthy();
+    });
   });
 });
