@@ -4,9 +4,10 @@ import { startTestDb, stopTestDb, clearDb } from "../helpers/db";
 import { closeDb } from "@server/core/database";
 import { POST as chatPOST } from "@/app/api/agent/chat/route";
 import { addAdmin } from "@server/services/admins";
+import { addUser } from "@server/services/users";
 import { addPosition, retrievePositionById } from "@server/services/positions";
 import { newId } from "../helpers/fixtures";
-import { AccountStatus } from "@server/schemas/common";
+import { AccountStatus, LoginType } from "@server/schemas/common";
 
 const ctx = { params: Promise.resolve({}) };
 
@@ -19,6 +20,17 @@ async function adminCookie(): Promise<string> {
     permissionList: null,
   });
   return `access_token=${admin.access_token}`;
+}
+
+async function userCookie(): Promise<string> {
+  const user = await addUser({
+    firstName: "Reg",
+    lastName: "User",
+    email: `usr-${newId()}@x.com`,
+    password: "pw123456",
+    loginType: LoginType.email,
+  });
+  return `access_token=${user.access_token}`;
 }
 
 function chatReq(cookie: string, payload: unknown): Request {
@@ -38,6 +50,19 @@ describe("/api/agent/chat", () => {
   it("401s an unauthenticated request", async () => {
     const res = await chatPOST(chatReq("", { message: "hi", mode: "smart" }), ctx);
     expect(res.status).toBe(401);
+  });
+
+  it("lets a regular USER run an agent turn (role-aware access)", async () => {
+    // Regression for the deployed 403 "Token role mismatch": a user-role token
+    // must be able to use the assistant, not just admins.
+    const cookie = await userCookie();
+    await addPosition({ title: "User can see this", status: "open" }, newId());
+    const res = await chatPOST(chatReq(cookie, { message: "list open positions", mode: "smart" }), ctx);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.conversationId).toBeTruthy();
+    expect(body.data.toolResults[0].tool).toBe("positions.list");
+    expect(body.data.toolResults[0].status).toBe("ok");
   });
 
   it("runs a read intent and returns a conversationId", async () => {

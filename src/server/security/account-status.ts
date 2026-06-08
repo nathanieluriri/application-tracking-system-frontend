@@ -1,6 +1,6 @@
 import { AppError, ErrorCode, authPermissionDenied } from "@server/core/errors";
 import { hasPermission, type PermissionList } from "@server/security/permissions";
-import { requireUser, requireAdmin } from "@server/http/guards";
+import { requireUser, requireAdmin, requireAny } from "@server/http/guards";
 import { AccountStatus } from "@server/schemas/common";
 import { retrieveUserById } from "@server/services/users";
 import { retrieveAdminById } from "@server/services/admins";
@@ -80,4 +80,22 @@ export async function checkAdminAccountStatusAndPermissions(
   validatePermissionList(admin.permissionList);
   ensurePermission(admin.permissionList, permissionKey);
   return publicAdmin(admin);
+}
+
+/**
+ * Role-aware status + permission check. Accepts EITHER a user or an admin
+ * principal and enforces the same permission key against whichever account the
+ * token belongs to. Used by surfaces that both personas share (e.g. the AI
+ * assistant). Returns the active principal as `UserOut | AdminOut`; callers that
+ * only need the actor id can read `.id`.
+ */
+export async function checkAccountStatusAndPermissions(
+  req: Request,
+  permissionKey: string,
+): Promise<UserOut | AdminOut> {
+  const principal = await requireAny(req);
+  if (principal.role === "admin") {
+    return checkAdminAccountStatusAndPermissions(req, permissionKey);
+  }
+  return checkUserAccountStatusAndPermissions(req, permissionKey);
 }

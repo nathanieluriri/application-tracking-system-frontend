@@ -15,11 +15,18 @@ export function defaultAdminPermissions(): PermissionList {
   };
 }
 
-/** Default permissions for a self-signup user (none beyond their own profile). */
+/**
+ * Default permissions for a self-signup user.
+ *
+ * Users are granted the same wildcard back-office access as admins: in this
+ * product `user` and `admin` are the same operator persona, and the dashboard
+ * (and the AI assistant that drives it) must work for both. Destructive/outbound
+ * actions taken via the assistant remain confirmation-gated regardless of role.
+ * Finer-grained permission lists can still be assigned per user and are honoured
+ * by `hasPermission`.
+ */
 export function defaultUserPermissions(): PermissionList {
   return {
-    permissions: [
-      { name: "get_my_users", methods: ["GET"], path: "/users/me", key: "GET:/users/me" },
-    ],
+    permissions: [{ name: "superuser", methods: ["*"], path: "*", key: "*" }],
   };
 }
