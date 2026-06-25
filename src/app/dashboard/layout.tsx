@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { Topbar } from "@/components/layout/Topbar";
+import { AdminRequired } from "@/components/layout/AdminRequired";
 import { serverFetch } from "@/lib/api/server";
 import { NavigationProgressProvider } from "@/providers/NavigationProgress";
 import { AgentPanelProvider } from "@/lib/agent/store";
@@ -16,6 +17,14 @@ interface MeResponse {
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const me = await serverFetch<{ data: MeResponse }>("/v1/admins/profile");
+
+  // The dashboard is admin-only — every data route requires an admin principal.
+  // A non-admin session (e.g. a self-signup user) would only see broken/"Page
+  // not found" pages, so show an "administrator access required" screen instead.
+  if (me.status === 401 || me.status === 403) {
+    return <AdminRequired />;
+  }
+
   const data = (me.data as unknown as { data?: MeResponse } | null)?.data;
   const fallbackName =
     [data?.firstName, data?.lastName].filter(Boolean).join(" ").trim() ||
