@@ -17,9 +17,38 @@ function metaLine(r: Role): string {
     .join("  ·  ");
 }
 
-export default async function CareersPage() {
-  const res = await serverFetch<{ data: Role[] }>("/v1/positions/public?start=0&stop=200");
-  const roles = res.data?.data ?? [];
+interface PublicWidgetData {
+  widget?: { content?: { heading?: string | null; subtitle?: string | null } | null } | null;
+  roles?: Role[];
+}
+
+export default async function CareersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ widget?: string }>;
+}) {
+  const { widget } = await searchParams;
+
+  // When opened from an embedded widget ("View open roles"), scope the list to
+  // that widget's curated/filtered roles via its public endpoint. Otherwise show
+  // every open role.
+  let roles: Role[] = [];
+  let heading = "Featured roles";
+  let subtitle =
+    "We're always seeking talented individuals to join our team. Find the role that fits you below.";
+
+  if (widget) {
+    const res = await serverFetch<{ data: PublicWidgetData }>(
+      `/api/public/widgets/${encodeURIComponent(widget)}`,
+    );
+    roles = res.data?.data?.roles ?? [];
+    const wc = res.data?.data?.widget?.content;
+    if (wc?.heading) heading = wc.heading;
+    if (wc?.subtitle) subtitle = wc.subtitle;
+  } else {
+    const res = await serverFetch<{ data: Role[] }>("/v1/positions/public?start=0&stop=200");
+    roles = res.data?.data ?? [];
+  }
 
   return (
     <div>
@@ -28,11 +57,10 @@ export default async function CareersPage() {
           We&apos;re hiring
         </p>
         <h1 className="font-[family-name:var(--font-fraunces)] text-4xl font-semibold leading-[1.05] tracking-tight text-zinc-50 sm:text-6xl">
-          Featured roles
+          {heading}
         </h1>
         <p className="mx-auto mt-5 max-w-md text-balance text-sm leading-relaxed text-zinc-400">
-          We&apos;re always seeking talented individuals to join our team. Find the role that fits
-          you below.
+          {subtitle}
         </p>
       </section>
 
