@@ -26,6 +26,7 @@ export const endpoints = {
   auth: {
     me: () => `/api/auth/me`,
     login: () => `/api/auth/login`,
+    adminLogin: () => `/api/admins/login`,
     signup: () => `/api/auth/signup`,
     logout: () => `/api/auth/logout`,
     refresh: () => `/api/auth/refresh`,

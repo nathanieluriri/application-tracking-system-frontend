@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ButtonLoading } from "@/components/feedback/ButtonLoading";
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, type ApiError } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
 
 const schema = z.object({
@@ -33,6 +33,21 @@ function safeNext(raw: string | null): string {
   return raw;
 }
 
+// Admins and users authenticate against separate endpoints/realms. Try the admin
+// realm first; only a 404 (no such admin) falls through to the user realm, so a
+// single form works for both. A 401 means the email IS an admin with a wrong
+// password — surface that rather than uselessly retrying as a user. Anything else
+// (429 rate-limit, 5xx, network) propagates as-is.
+async function login(values: FormValues): Promise<void> {
+  try {
+    await apiFetch(endpoints.auth.adminLogin(), { method: "POST", body: values });
+    return;
+  } catch (adminErr) {
+    if ((adminErr as Partial<ApiError>)?.status !== 404) throw adminErr;
+    await apiFetch(endpoints.auth.login(), { method: "POST", body: values });
+  }
+}
+
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -48,12 +63,20 @@ export function LoginForm() {
   async function onSubmit(values: FormValues) {
     setServerError(null);
     try {
-      await apiFetch(endpoints.auth.login(), { method: "POST", body: values });
+      await login(values);
       toast.success("Welcome back");
       router.replace(next);
       router.refresh();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Login failed";
+      const status = (err as Partial<ApiError>)?.status;
+      // 401/404 from either realm just means "wrong account/credentials" — show a
+      // single generic message (and avoid leaking which realm the email exists in).
+      const message =
+        status === 401 || status === 404
+          ? "Invalid email or password"
+          : err instanceof Error
+            ? err.message
+            : "Login failed";
       setServerError(message);
     }
   }
