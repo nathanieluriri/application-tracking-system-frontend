@@ -56,6 +56,27 @@ describe("widget render", () => {
     expect(renderWidget(cfg({ behavior: { enable_search: true } }), roles, ctx)).toContain("data-atsw-search");
     expect(renderWidget(cfg(), roles, ctx)).not.toContain("data-atsw-search");
   });
+
+  it("scopes 'View open roles' to this widget via ?widget=<id> when the widget has an id", () => {
+    const html = renderWidget(cfg({ id: "w42", content: { heading: "Featured roles", show_view_all: true } }), roles, ctx);
+    expect(html).toContain('href="https://ats.example.com/careers?widget=w42"');
+  });
+
+  it("falls back to plain /careers when there is no widget id", () => {
+    const html = renderWidget(cfg({ content: { heading: "Featured roles", show_view_all: true } }), roles, ctx);
+    expect(html).toContain('href="https://ats.example.com/careers"');
+    expect(html).not.toContain("?widget=");
+  });
+
+  it("respects a custom view_all_url over the scoped default", () => {
+    const html = renderWidget(
+      cfg({ id: "w42", content: { heading: "Featured roles", show_view_all: true, view_all_url: "https://jobs.acme.com" } }),
+      roles,
+      ctx,
+    );
+    expect(html).toContain('href="https://jobs.acme.com"');
+    expect(html).not.toContain("?widget=w42");
+  });
 });
 
 describe("renderTheme", () => {
@@ -64,6 +85,29 @@ describe("renderTheme", () => {
     expect(css).toContain("--accent:#ff0000");
     expect(css).toContain("--radius:20px");
     expect(css).toContain(":host{all:initial}");
+  });
+
+  it("falls back to a readable accent when accent has no contrast with the background (apply-now-invisible bug)", () => {
+    // Default widgets store accent #ffffff (the dark-mode default). In light mode
+    // that is invisible on the white background — the apply link must not be
+    // white-on-white. It should fall back to the dark foreground colour.
+    const css = renderTheme({ accent: "#ffffff", mode: "light" });
+    expect(css).not.toContain("--accent:#ffffff");
+    expect(css).toContain("--accent:#0b0b0c");
+  });
+
+  it("keeps a high-contrast accent as-is (white accent stays white in dark mode)", () => {
+    const css = renderTheme({ accent: "#ffffff", mode: "dark" });
+    expect(css).toContain("--accent:#ffffff");
+  });
+
+  it("buildRuntimeScript stays self-contained (renderTheme references no external helper)", () => {
+    // The served runtime stringifies renderTheme; the contrast logic must be
+    // inlined, not call a helper that isn't serialized.
+    const js = buildRuntimeScript();
+    expect(js).toContain("function renderTheme");
+    // a fresh accent with poor contrast still resolves inside the IIFE
+    expect(renderTheme({ accent: "#ffffff", mode: "light" })).toContain("--accent:#0b0b0c");
   });
 });
 

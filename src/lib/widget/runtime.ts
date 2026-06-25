@@ -70,13 +70,36 @@ export function escapeHtml(value: unknown): string {
 
 export function renderTheme(theme: WidgetRenderConfig["theme"]): string {
   const t = theme || {};
-  const accent = t.accent || "#ffffff";
   const radius = typeof t.radius === "number" ? t.radius : 14;
   const dark = t.mode !== "light";
   const bg = t.background || (dark ? "#0b0b0c" : "#ffffff");
   const fg = dark ? "#f4f4f5" : "#0b0b0c";
   const muted = dark ? "#a1a1aa" : "#52525b";
   const border = dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)";
+  // The "Apply now" CTA is the only element coloured by --accent. The saved
+  // default accent is #ffffff (a dark-mode default), which is invisible on a
+  // light background. Fall back to the foreground colour when the accent doesn't
+  // contrast enough with the background (WCAG-ish ratio < 3). Inlined — no helper
+  // calls — so renderTheme stays self-contained for buildRuntimeScript().
+  const accentInput = t.accent || (dark ? "#ffffff" : "#0b0b0c");
+  const relLum = (hex: string): number => {
+    const m = /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.exec(String(hex).trim());
+    if (!m) return -1;
+    let h = m[1];
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    const ch = [0, 2, 4].map((i) => {
+      const v = parseInt(h.slice(i, i + 2), 16) / 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+  };
+  const la = relLum(accentInput);
+  const lb = relLum(bg);
+  let accent = accentInput;
+  if (la >= 0 && lb >= 0) {
+    const ratio = (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+    if (ratio < 3) accent = fg;
+  }
   const font =
     t.font === "inherit"
       ? "inherit"
@@ -177,7 +200,12 @@ export function renderWidget(
 
   let head = "";
   if (content.show_header !== false) {
-    const viewAllHref = safeHref(content.view_all_url, origin + "/careers");
+    // Default "View open roles" opens the careers page scoped to THIS widget's
+    // curated/filtered roles (?widget=<id>), so visitors see the same list the
+    // embed shows. A custom view_all_url, if set, always wins.
+    const defaultViewAll =
+      origin + "/careers" + (config.id ? "?widget=" + encodeURIComponent(String(config.id)) : "");
+    const viewAllHref = safeHref(content.view_all_url, defaultViewAll);
     const target = behavior.open_in_new_tab === false ? "" : ' target="_blank" rel="noopener"';
     head =
       '<div class="atsw-head">' +
