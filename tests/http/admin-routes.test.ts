@@ -97,7 +97,7 @@ describe("admin route handlers", () => {
     expect(res.status).toBe(401);
   });
 
-  it("lets an admin create another admin (201) and the new admin can log in", async () => {
+  it("lets an admin create another admin (201) without swapping the creator's session", async () => {
     const cookie = await seedAdmin();
     const newEmail = `invited-${newId()}@example.com`;
     const res = await createPOST(
@@ -112,8 +112,14 @@ describe("admin route handlers", () => {
     const body = await res.json();
     expect(body.data.email).toBe(newEmail);
     expect(body.data.invited_by).toBeTruthy();
-    expect(res.cookies.get("access_token")?.value).toBeTruthy();
+    // Creating an admin must NOT set auth cookies — otherwise the creating admin
+    // would be silently logged into the freshly-created account. Tokens are also
+    // hidden from the body.
+    expect(res.cookies.get("access_token")?.value).toBeFalsy();
+    expect(res.cookies.get("refresh_token")?.value).toBeFalsy();
+    expect(body.data.access_token).toBeNull();
 
+    // The new admin is a real, usable account (its password works).
     const loginRes = await loginPOST(
       jsonReq("http://x/api/admins/login", { email: newEmail, password: "pw123456" }),
       ctx,

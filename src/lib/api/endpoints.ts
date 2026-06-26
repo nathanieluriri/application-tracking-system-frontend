@@ -61,6 +61,10 @@ export const endpoints = {
     stats: () => `/api/emails/stats`,
     compose: () => `/api/emails/compose`,
   },
+  admins: {
+    list: (q: ListQuery = {}) => `/api/admins/${qs(q)}`,
+    create: () => `/api/admins/`,
+  },
   invitations: {
     list: (q: ListQuery = {}) => `/api/invitations/${qs(q)}`,
     create: () => `/api/invitations/`,

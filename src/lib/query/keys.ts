@@ -14,6 +14,10 @@ export const qk = {
     list: (q: ListQuery) => ["positions", "list", q] as const,
     detail: (id: string) => ["positions", "detail", id] as const,
   },
+  admins: {
+    all: ["admins"] as const,
+    list: (q: ListQuery) => ["admins", "list", q] as const,
+  },
   emailTemplates: {
     all: ["email-templates"] as const,
     list: (q: ListQuery) => ["email-templates", "list", q] as const,
