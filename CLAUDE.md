@@ -1,8 +1,8 @@
 # Frontend Rules — applicant-tracking-system-frontend
 
-This is a **Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui** application whose **backend now lives inside this app** — the former FastAPI service has been migrated into TypeScript under `src/server/` and is served by the `/api/...` route handlers. **MongoDB is the only external dependency.** Read these rules before changing anything in this folder.
+This is a **Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui** application whose **backend lives inside this app** — the former FastAPI service was migrated into TypeScript under `src/server/` and is served by the `/api/...` route handlers. **MongoDB is the only external dependency.** Read these rules before changing anything in this folder.
 
-The backend migration design + plan live at `docs/superpowers/specs/2026-06-04-nextjs-backend-migration-design.md` and `docs/superpowers/plans/`. The original FastAPI source remains in `../application-tracking-system-backend/` as a behavior reference (oracle) only — it is no longer required at runtime.
+The original FastAPI source and the migration design docs have been removed now that the migration is complete; `src/server/` is the single source of truth for backend behavior.
 
 ---
 
@@ -150,8 +150,6 @@ Requires MongoDB running (`MONGODB_URI` in `.env.local`, default `mongodb://loca
 
 ## 13. Pointers
 
-- Backend migration design: `docs/superpowers/specs/2026-06-04-nextjs-backend-migration-design.md`
 - Server code: `src/server/` (core / schemas / repositories / services / security / http)
 - API route handlers: `src/app/api/`
 - Auth/cookies/envelope: `src/server/security/`, `src/server/http/auth-response.ts`, `src/server/core/response-envelope.ts`
-- Behavior oracle (legacy, runtime-unused): `../application-tracking-system-backend/`
