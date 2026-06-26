@@ -28,7 +28,13 @@ export async function getPositions(
   const db = await getDb();
   const cursor = db
     .collection(COLLECTIONS.positions)
+    // Stable, deterministic order is required for correct skip/limit pagination.
+    // Newest-first, with an `_id` tie-break so rows sharing a `date_created`
+    // second never reorder between requests (otherwise pages overlap/drop rows
+    // and the list intermittently looks empty). Mirrors the sort every other
+    // list repository already applies.
     .find(filter)
+    .sort({ date_created: -1, _id: -1 })
     .skip(start)
     .limit(stop - start);
   const items: PositionOut[] = [];
